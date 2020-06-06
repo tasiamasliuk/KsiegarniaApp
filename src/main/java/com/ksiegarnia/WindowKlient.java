@@ -5,6 +5,7 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.*;
+//import javax.swing.CheckBoxList;
 
 class WindowKlient extends JFrame {
     // url for connection to DB
@@ -57,11 +58,21 @@ class WindowKlient extends JFrame {
 
     //-------------- on panelORDER -------------------
     private JTextField poleDataZamow = new JTextField();
-    private JComboBox comboTypZamow = new JComboBox();
+    private JComboBox comboStatusZamow = new JComboBox();
 
     private DefaultListModel<String> listModelKlientZamow = new DefaultListModel<>();
     private JList<String> listKlientZamow = new JList<>(listModelKlientZamow);
     private JScrollPane scrollPaneKlientZamow = new JScrollPane(listKlientZamow);
+
+    private DefaultListModel<String> listModelBookZamow = new DefaultListModel<>();
+    private JList<String> listBookZamow = new JList<>(listModelBookZamow);
+    private JScrollPane scrollPaneBookZamow = new JScrollPane(listBookZamow);
+
+    private JButton buttonNewOrder = new JButton("Dodać zamówienia");
+
+    private DefaultListModel<String> listModelOrder = new DefaultListModel<>();
+    private JList<String> listOrder = new JList<>(listModelOrder);
+    private JScrollPane scrollPaneOrder = new JScrollPane(listOrder);
 
 
     //function to update date on list CLIENT
@@ -302,7 +313,7 @@ class WindowKlient extends JFrame {
             p = p.substring(0, p.indexOf(':'));
             try (Connection conn = DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPass)) {
                 Statement stmt = conn.createStatement();
-                String sql = "UPDATE `ksiazki` SET `cena`='" + newPrice + "' WHERE `isbn`='" + p + "'";
+                String sql = "UPDATE `ksiazki` SET `cena`='" + newPrice + "' WHERE `isbn`=`" + p + "`";
 
                 int res = stmt.executeUpdate(sql);
                 if (res == 1) {
@@ -335,6 +346,125 @@ class WindowKlient extends JFrame {
         }
     }
 
+    private void updateBooksListOrder() {
+        try (Connection conn= DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPass)) {
+            Statement stmt = conn.createStatement();
+            String sql = "SELECT isbn, autor, tytul, cena FROM ksiazki ORDER BY tytul";
+            ResultSet res = stmt.executeQuery(sql);
+            listModelBookZamow.clear();
+            while(res.next()) {
+                String s = res.getString(1) + ": " + res.getString(2) + " " + res.getString(3);
+                listModelBookZamow.addElement(s);
+            }
+        }
+        catch (SQLException ex) {
+            log.setText("nie udało się zaktualizować listy klientów");
+        }
+    }
+
+    private boolean isDataOrderValid(String dataInput){
+        int y = Integer.parseInt(dataInput.substring(0,4));
+        int m = Integer.parseInt(dataInput.substring(5,7));
+        int d = Integer.parseInt(dataInput.substring(8,10));
+
+        /*System.out.println("Input DATE:\ny - " + y +
+         *                               "\nm - " + m +
+         *                               "\nd - " + d);
+        */
+
+        if (! dataInput.matches("[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}"))
+            return false;
+        if (2020 > y)
+            return false;
+        if (m < 1 || 12 < m)
+            return false;
+        if (d < 1 || 31 < d)
+            return false;
+        return true;
+    }
+
+    private ActionListener akc_add_order = new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent actionEvent) {
+            String orderDate = poleDataZamow.getText();
+            if (!isDataOrderValid(orderDate)){
+                JOptionPane.showMessageDialog(WindowKlient.this, "Data [rok-miesiec-dzien] np.2020-05-17");
+                poleDataZamow.setText("");
+                poleDataZamow.requestFocus();
+                return;
+            }
+
+            Status status;
+            status = (Status)comboStatusZamow .getItemAt(comboStatusZamow.getSelectedIndex());
+            String orderStatus = status.name();
+
+            if (listBookZamow.getSelectedIndices().length == 0 || listKlientZamow.getSelectedIndices().length == 0)
+                return;
+
+            String p = listKlientZamow.getModel().getElementAt(listKlientZamow.getSelectionModel().getMinSelectionIndex());
+            System.out.println("\nSelected Client from JList for create an order:  " + p);
+            String orderClientKey = p.substring(0, p.indexOf(':'));
+            try (Connection conn = DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPass)) {
+                Statement stmt = conn.createStatement();
+
+                String sqlInsertOrder = "INSERT INTO `zamowienia`(`pesel`, `kiedy`, `status`) VALUES ('" + orderClientKey + "', '" + orderDate + "', '" + orderStatus + "')";
+                int resInsertOrder = stmt.executeUpdate(sqlInsertOrder);
+                int resInsertOrderBook = 0;
+
+                String sqlSelectOrderKey = "SELECT `id` FROM `zamowienia` WHERE `pesel`= " + orderClientKey + " AND `kiedy` = '" + orderDate + "' AND `status` = '" + orderStatus + "'";
+                ResultSet resSelectOrderKey = stmt.executeQuery(sqlSelectOrderKey);
+                resSelectOrderKey.next();
+                int orderKey = resSelectOrderKey.getInt(1);
+                System.out.println("\n Added order with PK: " + orderKey);
+
+                System.out.println("\n Selected " + listBookZamow.getSelectedIndices().length + " books for order\n");
+                for (int i = 0; i < listBookZamow.getSelectedIndices().length; i++) {
+                    String bookToOrder = listBookZamow.getModel().getElementAt(i);
+                    System.out.println(i+1 + " selected book from JList for order:  " + bookToOrder);
+
+                    // ------------    TO:DO I stop here!!!! -----------------
+                    String keyBookToOrder = bookToOrder.substring(0, bookToOrder.indexOf(':'));
+
+                    String sqlSelectOrderBookPrice = "SELECT `cena` FROM `ksiazki` WHERE `isbn` = `" + keyBookToOrder + "`";
+                    ResultSet resSelectOrderBookPrice = stmt.executeQuery(sqlSelectOrderBookPrice);
+                    resSelectOrderBookPrice.next();
+                    double orderBookPrice = resSelectOrderBookPrice.getDouble(1);
+                    System.out.print("  witch price: " + orderBookPrice);
+
+                    String sqlInsertOrderBook = "INSERT INTO `zestawienia`(`id`, `isbn`, `cena`) VALUES (`" + orderKey + "`, `" + keyBookToOrder + "` ,`" + orderBookPrice + "`)";
+                    resInsertOrderBook = stmt.executeUpdate(sqlInsertOrderBook);
+                    System.out.println(i + " book added result: " + resInsertOrderBook);
+                }
+
+
+                if (resInsertOrder == 1) {
+                    log.setText("OK - cena książki zmieniona");
+                    updateOrderList();
+                } else {
+                    log.setText("nie zmieniono cenę ksiazki");
+                }
+            } catch (SQLException ex) {
+                log.setText("błąd SQL - nie ununięto ksiazke");
+            }
+        }
+    };
+
+    private void updateOrderList() {
+        try (Connection conn= DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPass)) {
+            Statement stmt = conn.createStatement();
+            // TO:DO add counter for order books
+            String sql = "SELECT `id`, `pesel`, `kiedy`, `status` FROM `zamowienia` ORDER BY `kiedy`";
+            ResultSet res = stmt.executeQuery(sql);
+            listModelOrder.clear();
+            while(res.next()) {
+                String s = res.getString(1) + ": " + res.getString(2) + " " + res.getString(3);
+                listModelOrder.addElement(s);
+            }
+        }
+        catch (SQLException ex) {
+            log.setText("nie udało się zaktualizować listy klientów");
+        }
+    }
 
     public WindowKlient() throws SQLException {
         super("Księgarnia wysyłkowa");
@@ -364,92 +494,92 @@ class WindowKlient extends JFrame {
         JLabel lab1 = new JLabel("pesel:");
         panelClient.add(lab1);
         lab1.setSize(100, 20);
-        lab1.setLocation(40, 40);
+        lab1.setLocation(40, 20);
         lab1.setHorizontalTextPosition(JLabel.RIGHT);
 
         panelClient.add(polePesel);
         polePesel.setSize(200, 20);
-        polePesel.setLocation(160, 40);
+        polePesel.setLocation(160, 20);
 
         // ----------- IMIE -----------------
         JLabel lab2 = new JLabel("imię:");
         panelClient.add(lab2);
         lab2.setSize(100, 20);
-        lab2.setLocation(40, 80);
+        lab2.setLocation(40, 60);
         lab2.setHorizontalTextPosition(JLabel.RIGHT);
 
         panelClient.add(poleImia);
         poleImia.setSize(200, 20);
-        poleImia.setLocation(160, 80);
+        poleImia.setLocation(160, 60);
 
         // ----------- NAZWISKO ---------------
         JLabel lab3 = new JLabel("nazwisko:");
         panelClient.add(lab3);
         lab3.setSize(100, 20);
-        lab3.setLocation(40, 120);
+        lab3.setLocation(40, 100);
         lab3.setHorizontalTextPosition(JLabel.RIGHT);
 
         panelClient.add(poleNazwisko);
         poleNazwisko.setSize(200, 20);
-        poleNazwisko.setLocation(160, 120);
+        poleNazwisko.setLocation(160, 100);
 
         // ----------- DATE ---------------------
         JLabel lab4 = new JLabel("data urodzenia:");
         panelClient.add(lab4);
         lab4.setSize(100, 20);
-        lab4.setLocation(40, 160);
+        lab4.setLocation(40, 140);
         lab4.setHorizontalTextPosition(JLabel.RIGHT);
 
         panelClient.add(poleUrodziny);
         poleUrodziny.setSize(200, 20);
-        poleUrodziny.setLocation(160, 160);
+        poleUrodziny.setLocation(160, 140);
 
         // ----------- MAIL --------------------
         JLabel lab5 = new JLabel("mail:");
         panelClient.add(lab5);
         lab5.setSize(100, 20);
-        lab5.setLocation(40, 200);
+        lab5.setLocation(40, 180);
         lab5.setHorizontalTextPosition(JLabel.RIGHT);
         panelClient.add(poleMail);
         poleMail.setSize(200, 20);
-        poleMail.setLocation(160, 200);
+        poleMail.setLocation(160, 180);
 
         // ----------- ADRES ------------------
         JLabel lab6 = new JLabel("adres:");
         panelClient.add(lab6);
         lab6.setSize(100, 20);
-        lab6.setLocation(40, 240);
+        lab6.setLocation(40, 220);
         lab6.setHorizontalTextPosition(JLabel.RIGHT);
         panelClient.add(poleAdres);
         poleAdres.setSize(200, 20);
-        poleAdres.setLocation(160, 240);
+        poleAdres.setLocation(160, 220);
 
         // ----------- PHONE -------------------
         JLabel lab7 = new JLabel("telefon:");
         panelClient.add(lab7);
         lab7.setSize(100, 20);
-        lab7.setLocation(40, 280);
+        lab7.setLocation(40, 260);
         lab7.setHorizontalTextPosition(JLabel.RIGHT);
         panelClient.add(polePhone);
         polePhone.setSize(200, 20);
-        polePhone.setLocation(160, 280);
+        polePhone.setLocation(160, 260);
 
         // ----------- CLIENT SAVE BUTTON ------------------
         panelClient.add(buttonSaveClient);
         buttonSaveClient.setSize(200, 20);
-        buttonSaveClient.setLocation(160, 320);
+        buttonSaveClient.setLocation(160, 300);
         buttonSaveClient.addActionListener(akc_zap_kli);
 
         // ----------- CLIENT DELL BUTTON ------------------
         panelClient.add(buttonDellClient);
         buttonDellClient.setSize(200, 20);
-        buttonDellClient.setLocation(400, 320);
+        buttonDellClient.setLocation(400, 300);
         buttonDellClient.addActionListener(akc_usun_kli);
 
         // ----------- LIST CLIENT -------------------
         panelClient.add(scrollPaneClient);
         scrollPaneClient.setSize(200, 260);
-        scrollPaneClient.setLocation(400, 40);
+        scrollPaneClient.setLocation(400, 20);
         listClient.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         updateClientList();
 
@@ -462,40 +592,40 @@ class WindowKlient extends JFrame {
         JLabel labelISBN = new JLabel("ISBN:");
         panelBooks.add(labelISBN);
         labelISBN.setSize(100, 20);
-        labelISBN.setLocation(40, 40);
+        labelISBN.setLocation(40, 20);
         labelISBN.setHorizontalTextPosition(JLabel.RIGHT);
 
         panelBooks.add(poleISBN);
         poleISBN.setSize(200, 20);
-        poleISBN.setLocation(160, 40);
+        poleISBN.setLocation(160, 20);
 
         // ------------- AUTOR ----------------
         JLabel labelAutor = new JLabel("autor:");
         panelBooks.add(labelAutor);
         labelAutor.setSize(100, 20);
-        labelAutor.setLocation(40, 80);
+        labelAutor.setLocation(40, 60);
         labelAutor.setHorizontalTextPosition(JLabel.RIGHT);
 
         panelBooks.add(poleAutorBook);
         poleAutorBook.setSize(200, 20);
-        poleAutorBook.setLocation(160, 80);
+        poleAutorBook.setLocation(160, 60);
 
         // ------------- TYTUL ----------------
         JLabel labelTytul = new JLabel("tytul:");
         panelBooks.add(labelTytul);
         labelTytul.setSize(100, 20);
-        labelTytul.setLocation(40, 120);
+        labelTytul.setLocation(40, 100);
         labelTytul.setHorizontalTextPosition(JLabel.RIGHT);
 
         panelBooks.add(poleTytulBook);
         poleTytulBook.setSize(200, 20);
-        poleTytulBook.setLocation(160, 120);
+        poleTytulBook.setLocation(160, 100);
 
         // ------------- TYP ----------------
         JLabel labelTyp = new JLabel("typ:");
         panelBooks.add(labelTyp);
         labelTyp.setSize(100, 20);
-        labelTyp.setLocation(40, 160);
+        labelTyp.setLocation(40, 140);
         labelTyp.setHorizontalTextPosition(JLabel.RIGHT);
 
         panelBooks.add(comboTypBook);
@@ -503,73 +633,73 @@ class WindowKlient extends JFrame {
             comboTypBook.addItem(typBook);
         }
         comboTypBook.setSize(100,20);
-        comboTypBook.setLocation(160,160);
+        comboTypBook.setLocation(160,140);
 
         // ------------- WYDAWNICTWO ----------------
         JLabel labelWydaw = new JLabel("wydawnictwo:");
         panelBooks.add(labelWydaw);
         labelWydaw.setSize(100, 20);
-        labelWydaw.setLocation(40, 200);
+        labelWydaw.setLocation(40, 180);
         labelWydaw.setHorizontalTextPosition(JLabel.RIGHT);
 
         panelBooks.add(poleWydawBook);
         poleWydawBook.setSize(200, 20);
-        poleWydawBook.setLocation(160, 200);
+        poleWydawBook.setLocation(160, 180);
 
         // ------------- ROK ----------------
         JLabel labelRok = new JLabel("rok:");
         panelBooks.add(labelRok);
         labelRok.setSize(100, 20);
-        labelRok.setLocation(40, 240);
+        labelRok.setLocation(40, 220);
         labelRok.setHorizontalTextPosition(JLabel.RIGHT);
 
         panelBooks.add(poleRokBook);
         poleRokBook.setSize(200, 20);
-        poleRokBook.setLocation(160, 240);
+        poleRokBook.setLocation(160, 220);
 
         // ------------- CENA ----------------
         JLabel labelCena = new JLabel("cena:");
         panelBooks.add(labelCena);
         labelCena.setSize(100, 20);
-        labelCena.setLocation(40, 280);
+        labelCena.setLocation(40, 260);
         labelCena.setHorizontalTextPosition(JLabel.RIGHT);
 
         panelBooks.add(poleCenaBook);
         poleCenaBook.setSize(200, 20);
-        poleCenaBook.setLocation(160, 280);
+        poleCenaBook.setLocation(160, 260);
 
         // ------------- LIST WITH BOOKS --------
         panelBooks.add(scrollPaneBooks);
         scrollPaneBooks.setSize(200, 260);
-        scrollPaneBooks.setLocation(400, 40);
+        scrollPaneBooks.setLocation(400, 20);
         listBooks.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         apdateBooksList();
 
         // ------------- button to add book
         panelBooks.add(buttonSaveBook);
         buttonSaveBook.setSize(200, 20);
-        buttonSaveBook.setLocation(160, 320);
+        buttonSaveBook.setLocation(160, 300);
         buttonSaveBook.addActionListener(akc_zap_ksia);
         // ------------- button to remove book
         panelBooks.add(buttonDellBook);
         buttonDellBook.setSize(200, 20);
-        buttonDellBook.setLocation(400, 320);
+        buttonDellBook.setLocation(400, 300);
         buttonDellBook.addActionListener(akc_usun_ksia);
 
         // ---------- NEW PRICE -----------
         JLabel labelNewPrice = new JLabel("nowa cena:");
         panelBooks.add(labelNewPrice);
         labelNewPrice.setSize(100, 20);
-        labelNewPrice.setLocation(40, 350);
+        labelNewPrice.setLocation(40, 330);
         labelNewPrice.setHorizontalTextPosition(JLabel.RIGHT);
 
         panelBooks.add(poleNewPrice);
         poleNewPrice.setSize(200, 20);
-        poleNewPrice.setLocation(160, 350);
+        poleNewPrice.setLocation(160, 330);
 
         panelBooks.add(buttonNewPrice);
         buttonNewPrice.setSize(200, 20);
-        buttonNewPrice.setLocation(400, 350);
+        buttonNewPrice.setLocation(400, 330);
         buttonNewPrice.addActionListener(chenge_price_book);
 
 
@@ -578,37 +708,72 @@ class WindowKlient extends JFrame {
         // -----------PANEL ORDER --------
         panelOrder.setLayout(null);
 
+        // ----------- Books list on Order
+        JLabel labelBooksTitel = new JLabel("Książki:");
+        panelOrder.add(labelBooksTitel);
+        labelBooksTitel.setSize(100, 20);
+        labelBooksTitel.setLocation(40, 20);
+        labelBooksTitel.setHorizontalTextPosition(JLabel.RIGHT);
+
+
+        panelOrder.add(scrollPaneBookZamow);
+        scrollPaneBookZamow.setSize(350, 100);
+        scrollPaneBookZamow.setLocation(40, 50);
+        listBookZamow.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        updateBooksListOrder();
+
+
+        // ----------- DATA ---------------
         JLabel labelDataZamow = new JLabel("data:");
         panelOrder.add(labelDataZamow );
         labelDataZamow.setSize(100, 20);
-        labelDataZamow.setLocation(40, 40);
+        labelDataZamow.setLocation(40, 160);
         labelDataZamow.setHorizontalTextPosition(JLabel.RIGHT);
 
         panelOrder.add(poleDataZamow);
         poleDataZamow.setSize(200, 20);
-        poleDataZamow.setLocation(160, 40);
+        poleDataZamow.setLocation(160, 160);
 
-        // ------------- AUTOR ----------------
-        JLabel labelTypZamow = new JLabel("typ:");
+        // ------------- STATUS ----------------
+        JLabel labelTypZamow = new JLabel("status:");
         panelOrder.add(labelTypZamow);
         labelTypZamow.setSize(100, 20);
-        labelTypZamow.setLocation(40, 80);
+        labelTypZamow.setLocation(40, 190);
         labelTypZamow.setHorizontalTextPosition(JLabel.RIGHT);
 
-        panelOrder.add(comboTypZamow);
-        comboTypZamow.setSize(200, 20);
-        comboTypZamow.setLocation(160, 80);
+        panelOrder.add(comboStatusZamow);
+        comboStatusZamow.setSize(200, 20);
+        comboStatusZamow.setLocation(160, 190);
         for (Status status: Status.values()) {
-            comboTypZamow.addItem(status);
+            comboStatusZamow.addItem(status);
         }
 
-        // --------- Client ComboBox -------
+        // --------- Client List on Order -------
+
+        JLabel labelClientTitel = new JLabel("Klient:");
+        panelOrder.add(labelClientTitel);
+        labelClientTitel.setSize(100, 20);
+        labelClientTitel.setLocation(400, 20);
+        labelClientTitel.setHorizontalTextPosition(JLabel.RIGHT);
 
         panelOrder.add(scrollPaneKlientZamow);
-        scrollPaneKlientZamow.setSize(200, 260);
-        scrollPaneKlientZamow.setLocation(400, 40);
+        scrollPaneKlientZamow.setSize(200, 130);
+        scrollPaneKlientZamow.setLocation(400, 50);
         listKlientZamow.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         updateClientListOrder();
+
+        panelOrder.add(buttonNewOrder);
+        buttonNewOrder.setSize(200, 20);
+        buttonNewOrder.setLocation(400, 190);
+        buttonNewOrder.addActionListener(akc_add_order);
+
+        // --------- ORDER LIST
+        panelOrder.add(scrollPaneOrder);
+        scrollPaneOrder.setSize(560, 80);
+        scrollPaneOrder.setLocation(40, 220);
+        listOrder.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        updateOrderList();
+
 
 
     }
