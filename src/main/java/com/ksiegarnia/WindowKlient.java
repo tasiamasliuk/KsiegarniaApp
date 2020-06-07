@@ -210,7 +210,7 @@ class WindowKlient extends JFrame {
     };
 
     //function to update date on list BOOKS
-    private void apdateBooksList() {
+    private void updateBooksList() {
         try (Connection conn= DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPass)) {
             Statement stmt = conn.createStatement();
             String sql = "SELECT `isbn`, `autor`, `tytul`, `typ`, `rok`, `cena` FROM `ksiazki` WHERE 1 ORDER BY autor, tytul";
@@ -263,7 +263,7 @@ class WindowKlient extends JFrame {
                 int res = stmt.executeUpdate(sqlInsertKsia);
                 if (res == 1) {
                     log.setText("OK - książka dodana do bazy");
-                    apdateBooksList();
+                    updateBooksList();
                 }
             }
             catch(SQLException ex) {
@@ -292,7 +292,7 @@ class WindowKlient extends JFrame {
                     String sql1 = "DELETE FROM ksiazki WHERE isbn = '" + p + "'";
                     stmt.executeUpdate(sql1);
                     log.setText("OK - ksiazke usunięta z bazy");
-                    apdateBooksList();
+                    updateBooksList();
                 }
                 else log.setText("nie usunięto ksiazkie, ponieważ zamówuwiona");
             }
@@ -321,7 +321,7 @@ class WindowKlient extends JFrame {
                 int res = stmt.executeUpdate(sql);
                 if (res == 1) {
                     log.setText("OK - cena książki zmieniona");
-                    apdateBooksList();
+                    updateBooksList();
                 } else {
                     log.setText("nie zmieniono cenę ksiazki");
                 }
@@ -412,7 +412,6 @@ class WindowKlient extends JFrame {
 
                 String sqlInsertOrder = "INSERT INTO `zamowienia`(`pesel`, `kiedy`, `status`) VALUES ('" + orderClientKey + "', '" + orderDate + "', '" + orderStatus + "')";
                 int resInsertOrder = stmt.executeUpdate(sqlInsertOrder);
-                int resInsertOrderBook = 0;
 
                 String sqlSelectOrderKey = "SELECT `id` FROM `zamowienia` WHERE `pesel`= " + orderClientKey + " AND `kiedy` = '" + orderDate + "' AND `status` = '" + orderStatus + "'";
                 ResultSet resSelectOrderKey = stmt.executeQuery(sqlSelectOrderKey);
@@ -425,17 +424,17 @@ class WindowKlient extends JFrame {
                     String bookToOrder = listBookZamow.getModel().getElementAt(i);
                     System.out.println(i+1 + " selected book from JList for order:  " + bookToOrder);
 
-                    // ------------    TO:DO I stop here!!!! -----------------
                     String keyBookToOrder = bookToOrder.substring(0, bookToOrder.indexOf(':'));
-
-                    String sqlSelectOrderBookPrice = "SELECT `cena` FROM `ksiazki` WHERE `isbn` = `" + keyBookToOrder + "`";
+                    System.out.println("Key ordered book: " + keyBookToOrder);
+                    String sqlSelectOrderBookPrice = "SELECT `cena` FROM `ksiazki` WHERE `isbn`=" + keyBookToOrder;
                     ResultSet resSelectOrderBookPrice = stmt.executeQuery(sqlSelectOrderBookPrice);
                     resSelectOrderBookPrice.next();
                     double orderBookPrice = resSelectOrderBookPrice.getDouble(1);
-                    System.out.print("  witch price: " + orderBookPrice);
+                    System.out.println("  witch price: " + orderBookPrice);
 
-                    String sqlInsertOrderBook = "INSERT INTO `zestawienia`(`id`, `isbn`, `cena`) VALUES (`" + orderKey + "`, `" + keyBookToOrder + "` ,`" + orderBookPrice + "`)";
-                    resInsertOrderBook = stmt.executeUpdate(sqlInsertOrderBook);
+                    System.out.println("INSERT INTO `zestawienia`(`id`, `isbn`, `cena`) VALUES (`" + orderKey + "`, `" + keyBookToOrder + "` ,`" + orderBookPrice + "`)");
+                    String sqlInsertOrderBook = "INSERT INTO `zestawienia`(`id`, `isbn`, `cena`) VALUES (" + orderKey + ", " + keyBookToOrder + " ," + orderBookPrice + ")";
+                    int resInsertOrderBook = stmt.executeUpdate(sqlInsertOrderBook);
                     System.out.println(i + " book added result: " + resInsertOrderBook);
                 }
 
@@ -459,7 +458,7 @@ class WindowKlient extends JFrame {
             ResultSet res = stmt.executeQuery(sql);
             listModelOrder.clear();
             while(res.next()) {
-                String s = res.getString(1) + ": " + res.getString(2) + " " + res.getString(3);
+                String s = res.getString(1) + ": " + res.getString(2) + " " + res.getString(3) + " " + res.getString(4);
                 listModelOrder.addElement(s);
             }
         }
@@ -467,6 +466,37 @@ class WindowKlient extends JFrame {
             log.setText("nie udało się zaktualizować listy klientów");
         }
     }
+
+    private ActionListener akc_change_status = new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent actionEvent) {
+            Status status;
+            status = (Status)comboNewStatusOrder .getItemAt(comboNewStatusOrder.getSelectedIndex());
+            String orderStatus = status.name();
+
+            log.setText(listOrder.getModel().getElementAt(listOrder.getSelectionModel().getMinSelectionIndex()));
+            if (listOrder.getSelectedIndices().length == 0)
+                return;
+            String selectedOrder = listOrder.getModel().getElementAt(listOrder.getSelectionModel().getMinSelectionIndex());
+            System.out.println("\nSelected item from JList to change status:  " + selectedOrder);
+            String keyOrder = selectedOrder.substring(0, selectedOrder.indexOf(':'));
+
+            try (Connection conn = DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPass)) {
+                Statement stmt = conn.createStatement();
+                System.out.println("UPDATE `zamowienia` SET `status`='" + orderStatus + "' WHERE `id`='" + keyOrder + "'");
+                String sql = "UPDATE `zamowienia` SET `status`='" + orderStatus + "' WHERE `id`='" + keyOrder + "'";
+                int res = stmt.executeUpdate(sql);
+                if (res == 1) {
+                    log.setText("OK - status zamówienia zmieniony");
+                    updateOrderList();
+                } else {
+                    log.setText("nie zmieniono statusu zamuwienia");
+                }
+            } catch (SQLException ex) {
+                log.setText("błąd SQL - nie zmieniono statusu zamuwienia");
+            }
+        }
+    };
 
     public WindowKlient() throws SQLException {
         super("Księgarnia wysyłkowa");
@@ -675,7 +705,7 @@ class WindowKlient extends JFrame {
         scrollPaneBooks.setSize(200, 260);
         scrollPaneBooks.setLocation(400, 20);
         listBooks.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        apdateBooksList();
+        updateBooksList();
 
         // ------------- button to add book
         panelBooks.add(buttonSaveBook);
@@ -793,7 +823,7 @@ class WindowKlient extends JFrame {
         panelOrder.add(buttonNewStatusOrder);
         buttonNewStatusOrder.setSize(200, 20);
         buttonNewStatusOrder.setLocation(400, 340);
-        //buttonNewStatusOrder.addActionListener(akc_add_order);
+        buttonNewStatusOrder.addActionListener(akc_change_status);
 
 
 
