@@ -74,6 +74,9 @@ class WindowKlient extends JFrame {
     private JList<String> listOrder = new JList<>(listModelOrder);
     private JScrollPane scrollPaneOrder = new JScrollPane(listOrder);
 
+    private JComboBox comboNewStatusOrder = new JComboBox();
+    private JButton buttonNewStatusOrder = new JButton("Zmień status");
+
 
     //function to update date on list CLIENT
     private void updateClientList() {
@@ -436,7 +439,6 @@ class WindowKlient extends JFrame {
                     System.out.println(i + " book added result: " + resInsertOrderBook);
                 }
 
-
                 if (resInsertOrder == 1) {
                     log.setText("OK - cena książki zmieniona");
                     updateOrderList();
@@ -724,22 +726,22 @@ class WindowKlient extends JFrame {
 
 
         // ----------- DATA ---------------
-        JLabel labelDataZamow = new JLabel("data:");
-        panelOrder.add(labelDataZamow );
-        labelDataZamow.setSize(100, 20);
-        labelDataZamow.setLocation(40, 160);
-        labelDataZamow.setHorizontalTextPosition(JLabel.RIGHT);
+        JLabel labelDataOrder = new JLabel("data:");
+        panelOrder.add(labelDataOrder );
+        labelDataOrder.setSize(100, 20);
+        labelDataOrder.setLocation(40, 160);
+        labelDataOrder.setHorizontalTextPosition(JLabel.RIGHT);
 
         panelOrder.add(poleDataZamow);
         poleDataZamow.setSize(200, 20);
         poleDataZamow.setLocation(160, 160);
 
         // ------------- STATUS ----------------
-        JLabel labelTypZamow = new JLabel("status:");
-        panelOrder.add(labelTypZamow);
-        labelTypZamow.setSize(100, 20);
-        labelTypZamow.setLocation(40, 190);
-        labelTypZamow.setHorizontalTextPosition(JLabel.RIGHT);
+        JLabel labelStatusOrder = new JLabel("status:");
+        panelOrder.add(labelStatusOrder);
+        labelStatusOrder.setSize(100, 20);
+        labelStatusOrder.setLocation(40, 190);
+        labelStatusOrder.setHorizontalTextPosition(JLabel.RIGHT);
 
         panelOrder.add(comboStatusZamow);
         comboStatusZamow.setSize(200, 20);
@@ -769,10 +771,33 @@ class WindowKlient extends JFrame {
 
         // --------- ORDER LIST
         panelOrder.add(scrollPaneOrder);
-        scrollPaneOrder.setSize(560, 80);
+        scrollPaneOrder.setSize(560, 110);
         scrollPaneOrder.setLocation(40, 220);
         listOrder.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         updateOrderList();
+
+        // --------- NEW STATUS ORDER
+        JLabel labelNewStatus = new JLabel("nowy status:");
+        panelOrder.add(labelNewStatus);
+        labelNewStatus.setSize(100, 20);
+        labelNewStatus.setLocation(40, 340);
+        labelNewStatus.setHorizontalTextPosition(JLabel.RIGHT);
+
+        panelOrder.add(comboNewStatusOrder);
+        comboNewStatusOrder.setSize(200, 20);
+        comboNewStatusOrder.setLocation(160, 340);
+        for (Status status: Status.values()) {
+            comboNewStatusOrder.addItem(status);
+        }
+
+        panelOrder.add(buttonNewStatusOrder);
+        buttonNewStatusOrder.setSize(200, 20);
+        buttonNewStatusOrder.setLocation(400, 340);
+        //buttonNewStatusOrder.addActionListener(akc_add_order);
+
+
+
+
 
 
 
