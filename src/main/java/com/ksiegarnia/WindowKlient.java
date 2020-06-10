@@ -450,20 +450,24 @@ class WindowKlient extends JFrame {
         }
     };
 
+    //function to update date on list ORDER on ORDER panel
     private void updateOrderList() {
         try (Connection conn= DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPass)) {
             Statement stmt = conn.createStatement();
-            // TO:DO add counter for order books
-            String sql = "SELECT `id`, `pesel`, `kiedy`, `status` FROM `zamowienia` ORDER BY `kiedy`";
-            ResultSet res = stmt.executeQuery(sql);
+            String sqlSelectFromZamow = "SELECT book.id, kiedy, pesel, status, COUNT(*) FROM `zestawienia` book INNER JOIN zamowienia ord ON ord.id = book.id GROUP BY book.id";
+            ResultSet resOrder = stmt.executeQuery(sqlSelectFromZamow);
             listModelOrder.clear();
-            while(res.next()) {
-                String s = res.getString(1) + ": " + res.getString(2) + " " + res.getString(3) + " " + res.getString(4);
-                listModelOrder.addElement(s);
+
+            while(resOrder.next()) {
+                System.out.println("\nSearching for books for id: " + resOrder.getString(1));
+                String orderListItem = resOrder.getString(1) + ": " + resOrder.getString(2) + " " + resOrder.getString(3) + " " + resOrder.getString(4) + " zamówiono " + resOrder.getString(5) + " książek";
+                
+                listModelOrder.addElement(orderListItem);
             }
         }
         catch (SQLException ex) {
-            log.setText("nie udało się zaktualizować listy klientów");
+            log.setText("nie udało się zaktualizować listy zamówień " + ex);
+            System.out.println(ex);
         }
     }
 
