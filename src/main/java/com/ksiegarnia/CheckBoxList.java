@@ -29,7 +29,6 @@ public class CheckBoxList extends JList{
                              }
                          }
         );
-
         setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     }
 

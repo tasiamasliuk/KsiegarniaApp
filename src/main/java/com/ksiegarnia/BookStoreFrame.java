@@ -7,7 +7,7 @@ import java.awt.event.ActionListener;
 import java.sql.*;
 //import javax.swing.CheckBoxList;
 
-class WindowKlient extends JFrame {
+class BookStoreFrame extends JFrame {
     // url for connection to DB
     private String jdbcUrl = "jdbc:mysql://localhost:3306/ksiegarnia", jdbcUser = "root", jdbcPass = "";
 
@@ -57,16 +57,16 @@ class WindowKlient extends JFrame {
     private JButton buttonNewPrice = new JButton("Zmień cenę");
 
     //-------------- on panelORDER -------------------
-    private JTextField poleDataZamow = new JTextField();
-    private JComboBox comboStatusZamow = new JComboBox();
+    private JTextField poleDataOrder = new JTextField();
+    private JComboBox comboStatusOrder = new JComboBox();
 
-    private DefaultListModel<String> listModelKlientZamow = new DefaultListModel<>();
-    private JList<String> listKlientZamow = new JList<>(listModelKlientZamow);
-    private JScrollPane scrollPaneKlientZamow = new JScrollPane(listKlientZamow);
+    private DefaultListModel<String> listModelKlientOrder = new DefaultListModel<>();
+    private JList<String> listKlientOrder = new JList<>(listModelKlientOrder);
+    private JScrollPane scrollPaneKlientOrder = new JScrollPane(listKlientOrder);
 
-    private DefaultListModel<String> listModelBookZamow = new DefaultListModel<>();
-    private JList<String> listBookZamow = new JList<>(listModelBookZamow);
-    private JScrollPane scrollPaneBookZamow = new JScrollPane(listBookZamow);
+    private DefaultListModel<String> listModelBookOrder = new DefaultListModel<>();
+    private JList<String> listBookOrder = new JList<>(listModelBookOrder);
+    private JScrollPane scrollPaneBookOrder = new JScrollPane(listBookOrder);
 
     private JButton buttonNewOrder = new JButton("Dodać zamówienia");
 
@@ -126,7 +126,7 @@ class WindowKlient extends JFrame {
         public void actionPerformed(ActionEvent actionEvent) {
             String pesel = polePesel.getText();
             if (! pesel.matches("[0-9]{3,11}")) {
-                JOptionPane.showMessageDialog(WindowKlient.this, "błąd w polu z peselm");
+                JOptionPane.showMessageDialog(BookStoreFrame.this, "błąd w polu z peselm");
                 polePesel.setText("");
                 polePesel.requestFocus();
                 return;
@@ -136,20 +136,20 @@ class WindowKlient extends JFrame {
             String nazwisko = poleNazwisko.getText();
             String ur = poleUrodziny.getText();
             if (! isDataValid(ur)) {
-                JOptionPane.showMessageDialog(WindowKlient.this, "Data [rok-miesiec-dzien] np.1987-04-30");
+                JOptionPane.showMessageDialog(BookStoreFrame.this, "Data [rok-miesiec-dzien] np.1987-04-30");
                 poleUrodziny.setText("");
                 poleUrodziny.requestFocus();
                 return;
             }
             if (imie.equals("") || nazwisko.equals("") || ur.equals("")) {
-                JOptionPane.showMessageDialog(WindowKlient.this, "nie wypełnione pole z imieniem lub nazwiskiem lub datą urodzenia");
+                JOptionPane.showMessageDialog(BookStoreFrame.this, "nie wypełnione pole z imieniem lub nazwiskiem lub datą urodzenia");
                 return;
             }
 
             String mail = poleMail.getText();
             /*     //--- validation for mail ---
             if(! mail.matches("[A-Z0-9._%+-]@[A-Z0-9.-].[A-Z]{2,6}")){
-                JOptionPane.showMessageDialog(WindowKlient.this,"Prosze podac korektny mail adres");
+                JOptionPane.showMessageDialog(BookStoreFrame.this,"Prosze podac korektny mail adres");
                 poleMail.setText("");
                 poleMail.requestFocus();
                 return;
@@ -157,7 +157,7 @@ class WindowKlient extends JFrame {
             String adr = poleAdres.getText();
             String tel = polePhone.getText();
             if (mail.equals("") || adr.equals("") || tel.equals("")) {
-                JOptionPane.showMessageDialog(WindowKlient.this, "nie wypełnione pole z emailem lub adresem");
+                JOptionPane.showMessageDialog(BookStoreFrame.this, "nie wypełnione pole z emailem lub adresem");
                 return;
             }
 
@@ -232,7 +232,7 @@ class WindowKlient extends JFrame {
         public void actionPerformed(ActionEvent actionEvent) {
             String ISBN = poleISBN.getText();
             if (! ISBN.matches("[0-9]{3,11}")) {
-                JOptionPane.showMessageDialog(WindowKlient.this, "błąd w polu z ISBN");
+                JOptionPane.showMessageDialog(BookStoreFrame.this, "błąd w polu z ISBN");
                 poleISBN.setText("");
                 poleISBN.requestFocus();
                 return;
@@ -245,7 +245,7 @@ class WindowKlient extends JFrame {
             typBook = (TypBook)comboTypBook.getItemAt(comboTypBook.getSelectedIndex());
             String typ = typBook.name();
             if (autor.equals("") || tytul.equals("") || typ.equals("")) {
-                JOptionPane.showMessageDialog(WindowKlient.this, "nie wypełnione pole z awtorem, tytulem lub typem książki");
+                JOptionPane.showMessageDialog(BookStoreFrame.this, "nie wypełnione pole z awtorem, tytulem lub typem książki");
                 return;
             }
 
@@ -253,7 +253,7 @@ class WindowKlient extends JFrame {
             String rok = poleRokBook.getText();
             String cena = poleCenaBook.getText();
             if (cena.equals("")) {
-                JOptionPane.showMessageDialog(WindowKlient.this, "nie wypełnione pole z ceną");
+                JOptionPane.showMessageDialog(BookStoreFrame.this, "nie wypełnione pole z ceną");
                 return;
             }
 
@@ -332,16 +332,16 @@ class WindowKlient extends JFrame {
     };
 
 
-    //function to update date on list CLIENT on panel ORDER
+    //function to update date on list CLIENT on ORDER panel
     private void updateClientListOrder() {
         try (Connection conn= DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPass)) {
             Statement stmt = conn.createStatement();
             String sql = "SELECT klienci.pesel, nazwisko, imie FROM klienci ORDER BY nazwisko, imie";
             ResultSet res = stmt.executeQuery(sql);
-            listModelKlientZamow.clear();
+            listModelKlientOrder.clear();
             while(res.next()) {
                 String s = res.getString(1) + ": " + res.getString(2) + " " + res.getString(3);
-                listModelKlientZamow.addElement(s);
+                listModelKlientOrder.addElement(s);
             }
         }
         catch (SQLException ex) {
@@ -349,15 +349,16 @@ class WindowKlient extends JFrame {
         }
     }
 
+    //function to update date on list BOOK on ORDER panel
     private void updateBooksListOrder() {
         try (Connection conn= DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPass)) {
             Statement stmt = conn.createStatement();
-            String sql = "SELECT isbn, autor, tytul, cena FROM ksiazki ORDER BY tytul";
-            ResultSet res = stmt.executeQuery(sql);
-            listModelBookZamow.clear();
+            String sqlSelect = "SELECT isbn, autor, tytul, cena FROM ksiazki ORDER BY tytul";
+            ResultSet res = stmt.executeQuery(sqlSelect);
+            listModelBookOrder.clear();
             while(res.next()) {
                 String s = res.getString(1) + ": " + res.getString(2) + " " + res.getString(3);
-                listModelBookZamow.addElement(s);
+                listModelBookOrder.addElement(s);
             }
         }
         catch (SQLException ex) {
@@ -365,6 +366,12 @@ class WindowKlient extends JFrame {
         }
     }
 
+    /* validation for date
+     * Date format for SQL INSERT in DB
+     * yyy-mm-dd
+     * year mast be 2020 or greater
+     * TODO add checking by today date (not greater then today)
+     */
     private boolean isDataOrderValid(String dataInput){
         int y = Integer.parseInt(dataInput.substring(0,4));
         int m = Integer.parseInt(dataInput.substring(5,7));
@@ -386,25 +393,30 @@ class WindowKlient extends JFrame {
         return true;
     }
 
+    /* ------- function to add new order ---
+    *  Tables to update on DB:
+    *  `zamowienia`
+    *  `zestawienia`
+    */
     private ActionListener akc_add_order = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent actionEvent) {
-            String orderDate = poleDataZamow.getText();
+            String orderDate = poleDataOrder.getText();
             if (!isDataOrderValid(orderDate)){
-                JOptionPane.showMessageDialog(WindowKlient.this, "Data [rok-miesiec-dzien] np.2020-05-17");
-                poleDataZamow.setText("");
-                poleDataZamow.requestFocus();
+                JOptionPane.showMessageDialog(BookStoreFrame.this, "Data [rok-miesiec-dzien] np.2020-05-17");
+                poleDataOrder.setText("");
+                poleDataOrder.requestFocus();
                 return;
             }
 
             Status status;
-            status = (Status)comboStatusZamow .getItemAt(comboStatusZamow.getSelectedIndex());
+            status = (Status) comboStatusOrder.getItemAt(comboStatusOrder.getSelectedIndex());
             String orderStatus = status.name();
 
-            if (listBookZamow.getSelectedIndices().length == 0 || listKlientZamow.getSelectedIndices().length == 0)
+            if (listBookOrder.getSelectedIndices().length == 0 || listKlientOrder.getSelectedIndices().length == 0)
                 return;
 
-            String p = listKlientZamow.getModel().getElementAt(listKlientZamow.getSelectionModel().getMinSelectionIndex());
+            String p = listKlientOrder.getModel().getElementAt(listKlientOrder.getSelectionModel().getMinSelectionIndex());
             System.out.println("\nSelected Client from JList for create an order:  " + p);
             String orderClientKey = p.substring(0, p.indexOf(':'));
             try (Connection conn = DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPass)) {
@@ -419,9 +431,9 @@ class WindowKlient extends JFrame {
                 int orderKey = resSelectOrderKey.getInt(1);
                 System.out.println("\n Added order with PK: " + orderKey);
 
-                System.out.println("\n Selected " + listBookZamow.getSelectedIndices().length + " books for order\n");
-                for (int i = 0; i < listBookZamow.getSelectedIndices().length; i++) {
-                    String bookToOrder = listBookZamow.getModel().getElementAt(i);
+                System.out.println("\n Selected " + listBookOrder.getSelectedIndices().length + " books for order\n");
+                for (int i = 0; i < listBookOrder.getSelectedIndices().length; i++) {
+                    String bookToOrder = listBookOrder.getModel().getElementAt(i);
                     System.out.println(i+1 + " selected book from JList for order:  " + bookToOrder);
 
                     String keyBookToOrder = bookToOrder.substring(0, bookToOrder.indexOf(':'));
@@ -450,28 +462,31 @@ class WindowKlient extends JFrame {
         }
     };
 
+    //function to update date on list ORDER on ORDER panel
     private void updateOrderList() {
         try (Connection conn= DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPass)) {
             Statement stmt = conn.createStatement();
-            // TO:DO add counter for order books
-            String sql = "SELECT `id`, `pesel`, `kiedy`, `status` FROM `zamowienia` ORDER BY `kiedy`";
-            ResultSet res = stmt.executeQuery(sql);
+            String sqlSelectFromZamow = "SELECT book.id, kiedy, pesel, status, COUNT(*) FROM `zestawienia` book INNER JOIN zamowienia ord ON ord.id = book.id GROUP BY book.id";
+            ResultSet resOrder = stmt.executeQuery(sqlSelectFromZamow);
             listModelOrder.clear();
-            while(res.next()) {
-                String s = res.getString(1) + ": " + res.getString(2) + " " + res.getString(3) + " " + res.getString(4);
-                listModelOrder.addElement(s);
+
+            while(resOrder.next()) {
+                String orderListItem = resOrder.getString(1) + ": " + resOrder.getString(2) + " " + resOrder.getString(3) + " " + resOrder.getString(4) + " zamówiono " + resOrder.getString(5) + " książek";
+                listModelOrder.addElement(orderListItem);
             }
         }
         catch (SQLException ex) {
-            log.setText("nie udało się zaktualizować listy klientów");
+            log.setText("nie udało się zaktualizować listy zamówień " + ex);
+            System.out.println(ex);
         }
     }
 
+    // ------- function to change status ---
     private ActionListener akc_change_status = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent actionEvent) {
             Status status;
-            status = (Status)comboNewStatusOrder .getItemAt(comboNewStatusOrder.getSelectedIndex());
+            status = (Status)comboNewStatusOrder.getItemAt(comboNewStatusOrder.getSelectedIndex());
             String orderStatus = status.name();
 
             log.setText(listOrder.getModel().getElementAt(listOrder.getSelectionModel().getMinSelectionIndex()));
@@ -498,7 +513,7 @@ class WindowKlient extends JFrame {
         }
     };
 
-    public WindowKlient() throws SQLException {
+    public BookStoreFrame() throws SQLException {
         super("Księgarnia wysyłkowa");
         setSize(660, 460);
         setLocation(100, 100);
@@ -748,10 +763,10 @@ class WindowKlient extends JFrame {
         labelBooksTitel.setHorizontalTextPosition(JLabel.RIGHT);
 
 
-        panelOrder.add(scrollPaneBookZamow);
-        scrollPaneBookZamow.setSize(350, 100);
-        scrollPaneBookZamow.setLocation(40, 50);
-        listBookZamow.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        panelOrder.add(scrollPaneBookOrder);
+        scrollPaneBookOrder.setSize(350, 100);
+        scrollPaneBookOrder.setLocation(40, 50);
+        listBookOrder.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
         updateBooksListOrder();
 
 
@@ -762,9 +777,9 @@ class WindowKlient extends JFrame {
         labelDataOrder.setLocation(40, 160);
         labelDataOrder.setHorizontalTextPosition(JLabel.RIGHT);
 
-        panelOrder.add(poleDataZamow);
-        poleDataZamow.setSize(200, 20);
-        poleDataZamow.setLocation(160, 160);
+        panelOrder.add(poleDataOrder);
+        poleDataOrder.setSize(200, 20);
+        poleDataOrder.setLocation(160, 160);
 
         // ------------- STATUS ----------------
         JLabel labelStatusOrder = new JLabel("status:");
@@ -773,11 +788,11 @@ class WindowKlient extends JFrame {
         labelStatusOrder.setLocation(40, 190);
         labelStatusOrder.setHorizontalTextPosition(JLabel.RIGHT);
 
-        panelOrder.add(comboStatusZamow);
-        comboStatusZamow.setSize(200, 20);
-        comboStatusZamow.setLocation(160, 190);
+        panelOrder.add(comboStatusOrder);
+        comboStatusOrder.setSize(200, 20);
+        comboStatusOrder.setLocation(160, 190);
         for (Status status: Status.values()) {
-            comboStatusZamow.addItem(status);
+            comboStatusOrder.addItem(status);
         }
 
         // --------- Client List on Order -------
@@ -788,10 +803,10 @@ class WindowKlient extends JFrame {
         labelClientTitel.setLocation(400, 20);
         labelClientTitel.setHorizontalTextPosition(JLabel.RIGHT);
 
-        panelOrder.add(scrollPaneKlientZamow);
-        scrollPaneKlientZamow.setSize(200, 130);
-        scrollPaneKlientZamow.setLocation(400, 50);
-        listKlientZamow.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        panelOrder.add(scrollPaneKlientOrder);
+        scrollPaneKlientOrder.setSize(200, 130);
+        scrollPaneKlientOrder.setLocation(400, 50);
+        listKlientOrder.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         updateClientListOrder();
 
         panelOrder.add(buttonNewOrder);
